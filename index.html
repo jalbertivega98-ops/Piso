@@ -155,6 +155,8 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/environments/RoomEnvironment.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/RoundedBoxGeometry.js"></script>
 <script>
 (function () {
   // ---------- Medidas (metros). x hacia la derecha, z hacia abajo del plano ----------
@@ -184,14 +186,14 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     { a: [7.23, 5.36], b: [7.23, 7.78], t: TE },
     { a: [5.66, 7.78], b: [7.23, 7.78], t: T },
     { a: [6.95, 7.78], b: [6.95, 9.53], t: TE },
-    { a: [0.16, 9.53], b: [7.05, 9.53], t: TE, holes: [[4.45, 5.35, 'door']] },
+    { a: [0.16, 9.53], b: [7.05, 9.53], t: TE, holes: [[4.45, 5.35, 'door', -1]] },
     { a: [0.16, 6.70], b: [0.16, 9.53], t: TE, holes: [[0.4, 2.5, 'glass']] },
     { a: [-0.1, 6.70], b: [4.26, 6.70], t: T },
     { a: [-0.1, -0.1], b: [-0.1, 6.75], t: TE, holes: [[0.6, 1.9, 'glass'], [2.1, 3.4, 'glass'], [4.25, 5.15, 'glass']] },
-    { a: [4.26, 3.93], b: [5.66, 3.93], t: T, holes: [[0.3, 1.1, 'door']] },
+    { a: [4.26, 3.93], b: [5.66, 3.93], t: T, holes: [[0.3, 1.1, 'door', -1]] },
     { a: [-0.1, 3.93], b: [4.26, 3.93], t: T },
     { a: [4.26, 3.93], b: [4.26, 9.53], t: T, holes: [[1.75, 2.55, 'door'], [4.45, 5.25, 'door']] },
-    { a: [5.66, -0.1], b: [5.66, 7.78], t: T, holes: [[0.6, 2.5, 'open'], [4.4, 5.2, 'door'], [6.8, 7.6, 'door']] },
+    { a: [5.66, -0.1], b: [5.66, 7.78], t: T, holes: [[0.6, 2.5, 'open'], [4.4, 5.2, 'door', -1], [6.8, 7.6, 'door', -1]] },
   ];
 
   const CX = 3.4, CZ = 4.7;
@@ -206,6 +208,8 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
       sofa: 0xcdc7bd, sofaCush: 0xd8d2c8, accent: 0xb9a68a, chair: 0xd2b88f, bedFrame: 0xd6bc94, bedThrow: 0xe3dbcc, night: 0xd6bc94, nightPull: 0xbfa27c,
       wardrobe: 0xeee8dc, wardrobeLine: 0xd3c8b4, tvTop: 0xd6bc94, wall: 0xf3f0ea },
   };
+  PALETTES.nordico = Object.assign({}, PALETTES.minimal, { wood: 0xe2cfae, woodDark: 0xd3bc96, bedFrame: 0xe2cfae, night: 0xe2cfae, tvTop: 0xe2cfae, chair: 0xe2cfae,
+    sofa: 0xc3c6bc, sofaCush: 0xcfd1c8, fabric: 0xc3c6bc, fabric2: 0xd8d0c0, accent: 0xa9b39d, bedThrow: 0xd9dccf, rug: 0xe8e3d8 });
   const C = Object.assign({ black: 0x2a2a2a, green: 0x4f7d4a }, PALETTES.fotos);
   function usePalette(name) { Object.assign(C, PALETTES[name] || PALETTES.fotos); if (typeof wallMat !== 'undefined') wallMat.color.setHex(C.wall); }
   const CATALOG = {
@@ -294,23 +298,57 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
           ['sofa', 2.2, 7.25, 0], ['tv', 2.2, 9.2, PI], ['puff', 3.4, 8.0, 0], ['puff', 0.9, 8.1, 0], ['alfombra', 2.2, 8.2, 0], ['bici', 3.75, 7.45, 0],
           ['lavadora', 6.05, 7.42, H2], ...BALC,
         ] },
+      { id: 'tvbalcon', name: 'Sofá en el centro mirando a la tele', desc: 'El sofá flota en medio del salón y separa la zona de estar del comedor. Cama contra la pared del salón y armario en la de ladrillo.', accent: 0xddd6ca, pal: 'minimal',
+        layout: [
+          ['tv', 2.2, 0.3, 0], ['chaise', 2.2, 2.45, PI], ['mesaCentro', 2.2, 1.25, 0], ['alfombra', 2.2, 1.4, 0], ['planta', 0.4, 0.4, 0], ['lampara', 3.85, 3.5, 0],
+          ['mesa', 4.55, 2.85, 0], ['silla', 4.25, 2.3, 0], ['silla', 4.85, 2.3, 0], ['silla', 3.7, 2.85, H2], ['silla', 5.35, 2.85, -H2],
+          ['cama', 2.0, 5.0, 0], ['mesita', 0.95, 4.2, 0], ['mesita', 3.05, 4.2, 0], ['armario', 2.6, 6.35, PI],
+          ['escritorio', 2.2, 7.15, 0], ['sillaOfi', 2.2, 7.8, PI], ['estanteria', 3.95, 7.6, -H2], ['sillon', 1.0, 8.9, PI / 4], ['planta', 3.7, 9.1, 0],
+          ['lavadora', 6.05, 7.42, H2], ...BALC,
+        ] },
+      { id: 'teletrabajo', name: 'Teletrabajo para dos', desc: 'Oficina con dos escritorios mirando a la ventana y librería. Estilo nórdico: madera muy clara y textiles salvia suaves.', accent: 0xd9dbd0, pal: 'nordico',
+        layout: [
+          ['chaise', 2.0, 0.85, 0], ['mesaCentro', 2.2, 2.25, 0], ['alfombra', 2.2, 2.3, 0], ['tv', 2.0, 3.66, PI], ['planta', 0.35, 3.5, 0],
+          ['mesa', 4.45, 1.2, 0], ['silla', 4.15, 0.62, 0], ['silla', 4.75, 0.62, 0], ['silla', 4.15, 1.78, PI], ['silla', 4.75, 1.78, PI],
+          ...DORM,
+          ['escritorio', 0.75, 7.55, H2], ['sillaOfi', 1.45, 7.55, -H2], ['escritorio', 0.75, 8.95, H2], ['sillaOfi', 1.45, 8.95, -H2],
+          ['estanteria', 2.6, 6.95, 0], ['estanteria', 3.5, 6.95, 0], ['planta', 3.8, 9.1, 0], ['lampara', 2.2, 9.15, 0],
+          ['lavadora', 6.05, 7.42, H2], ...BALC,
+        ] },
+      { id: 'peques', name: 'Habitación infantil', desc: 'La oficina se convierte en cuarto para un niño: cama de 90, escritorio, estantería y zona de juego con alfombra y pufs.', accent: 0xe2d9cb, pal: 'minimal',
+        layout: [
+          ['chaise', 2.0, 0.85, 0], ['mesaCentro', 2.2, 2.25, 0], ['tv', 2.0, 3.66, PI], ['planta', 0.35, 3.5, 0],
+          ['mesa', 4.45, 1.2, 0], ['silla', 4.15, 0.62, 0], ['silla', 4.75, 0.62, 0], ['silla', 4.15, 1.78, PI], ['silla', 4.75, 1.78, PI],
+          ...DORM,
+          ['camaInd', 3.65, 7.8, 0], ['mesita', 2.95, 7.0, 0], ['escritorio', 0.75, 7.6, H2], ['sillaOfi', 1.4, 7.6, -H2], ['estanteria', 2.0, 9.25, PI],
+          ['alfombra', 2.1, 8.4, 0], ['puff', 1.3, 8.9, 0], ['puff', 2.8, 8.95, 0],
+          ['lavadora', 6.05, 7.42, H2], ...BALC,
+        ] },
     ],
     terraza: [
       { id: 'actual', name: 'Como está ahora', desc: 'La mesa verde con cuatro sillas, los árboles y las jardineras.',
-        layout: [['mesaRedonda', 2.0, 1.7, 0], ['sillaExt', 2.0, 1.05, 0], ['sillaExt', 2.0, 2.35, PI], ['sillaExt', 1.35, 1.7, H2], ['sillaExt', 2.65, 1.7, -H2],
-          ['arbol', 0.5, 0.5, 0], ['arbol', 4.2, 3.7, 0], ['arbol', 4.2, 4.45, 0], ['macetero', 1.6, 0.35, 0]] },
+        layout: [['mesaRedonda', 2.6, 2.2, 0], ['sillaExt', 2.6, 1.55, 0], ['sillaExt', 2.6, 2.85, PI], ['sillaExt', 1.95, 2.2, H2], ['sillaExt', 3.25, 2.2, -H2],
+          ['arbol', 0.5, 0.5, 0], ['arbol', 5.5, 0.5, 0], ['arbol', 5.5, 1.3, 0], ['macetero', 1.6, 0.35, 0], ['macetero', 0.35, 3.0, H2]] },
       { id: 'chill', name: 'Chill-out con jacuzzi', desc: 'Sofás en L bajo una pérgola, jacuzzi en la esquina, dos tumbonas y ducha junto a la caseta.',
-        layout: [['pergola', 1.75, 1.4, 0], ['sofaExt', 1.85, 0.55, 0], ['sofaExt', 0.55, 1.85, H2], ['alfombra', 2.0, 1.7, 0], ['mesaCentro', 2.0, 1.7, 0],
-          ['jacuzzi', 1.3, 3.85, PI], ['tumbonaSol', 3.15, 3.95, PI], ['tumbonaSol', 3.95, 3.95, PI], ['ducha', 4.4, 0.35, 0],
-          ['arbol', 4.3, 2.5, 0], ['puff', 5.4, 4.1, 0], ['huerto', 7.35, 4.55, PI], ['planta', 0.4, 0.35, 0]] },
-      { id: 'comedor', name: 'Comedor y barbacoa', desc: 'Mesa para ocho bajo la pérgola, barbacoa, barra con taburetes junto a la caseta y huerto.',
-        layout: [['pergola', 2.0, 2.2, 0], ['mesaLarga', 2.0, 2.2, 0], ['sillaExt', 1.2, 1.5, 0], ['sillaExt', 2.0, 1.5, 0], ['sillaExt', 2.8, 1.5, 0],
-          ['sillaExt', 1.2, 2.9, PI], ['sillaExt', 2.0, 2.9, PI], ['sillaExt', 2.8, 2.9, PI], ['sillaExt', 0.5, 2.2, H2], ['sillaExt', 3.5, 2.2, -H2],
-          ['barbacoa', 0.35, 4.2, H2], ['barra', 4.4, 1.4, -H2], ['taburete', 3.95, 0.95, 0], ['taburete', 3.95, 1.85, 0],
-          ['huerto', 5.4, 4.55, PI], ['huerto', 2.4, 4.55, PI], ['arbol', 0.5, 0.5, 0], ['arbol', 7.55, 4.5, 0]] },
-      { id: 'cine', name: 'Cine de verano y huerto', desc: 'Pantalla contra la caseta, sofá y pufs para ver pelis, huerto en fila y una tumbona al sol.',
-        layout: [['pantalla', 4.45, 1.6, -H2], ['sofaExt', 1.0, 1.6, H2], ['alfombra', 2.4, 1.6, H2], ['puff', 2.5, 1.0, 0], ['puff', 2.5, 2.2, 0], ['sombrilla', 6.2, 4.0, 0],
-          ['tumbonaSol', 6.0, 4.0, H2], ['huerto', 0.9, 4.5, 0], ['huerto', 2.3, 4.5, 0], ['huerto', 3.7, 4.5, 0], ['arbol', 0.5, 0.5, 0], ['mesaRedonda', 7.3, 4.2, 0]] },
+        layout: [['pergola', 1.6, 1.4, 0], ['sofaExt', 1.75, 0.55, 0], ['sofaExt', 0.55, 1.8, H2], ['alfombra', 1.95, 1.75, 0], ['mesaCentro', 1.95, 1.75, 0],
+          ['jacuzzi', 1.2, 3.85, PI], ['tumbonaSol', 3.2, 3.95, PI], ['tumbonaSol', 4.0, 3.95, PI], ['ducha', 5.6, 0.4, 0],
+          ['arbol', 4.4, 0.6, 0], ['puff', 4.4, 2.0, 0], ['planta', 0.4, 0.35, 0]] },
+      { id: 'comedor', name: 'Comedor y barbacoa', desc: 'Mesa para ocho bajo la pérgola, barbacoa, barra con taburetes contra la caseta y huerto.',
+        layout: [['pergola', 2.2, 2.3, 0], ['mesaLarga', 2.2, 2.3, 0], ['sillaExt', 1.4, 1.6, 0], ['sillaExt', 2.2, 1.6, 0], ['sillaExt', 3.0, 1.6, 0],
+          ['sillaExt', 1.4, 3.0, PI], ['sillaExt', 2.2, 3.0, PI], ['sillaExt', 3.0, 3.0, PI], ['sillaExt', 0.65, 2.3, H2], ['sillaExt', 3.75, 2.3, -H2],
+          ['barbacoa', 0.35, 4.2, H2], ['barra', 5.7, 1.2, -H2], ['taburete', 5.2, 0.75, 0], ['taburete', 5.2, 1.65, 0],
+          ['huerto', 2.4, 4.55, PI], ['huerto', 3.8, 4.55, PI], ['arbol', 0.5, 0.5, 0]] },
+      { id: 'cine', name: 'Cine de verano y huerto', desc: 'Pantalla contra la caseta, sofá y pufs para ver pelis y una fila de huertos.',
+        layout: [['pantalla', 5.75, 1.6, -H2], ['sofaExt', 1.3, 1.6, H2], ['alfombra', 2.9, 1.6, H2], ['puff', 2.8, 1.0, 0], ['puff', 2.8, 2.2, 0], ['mesaCentro', 2.1, 1.6, H2],
+          ['huerto', 1.0, 4.55, 0], ['huerto', 2.4, 4.55, 0], ['huerto', 3.8, 4.55, 0], ['arbol', 0.5, 0.5, 0], ['mesaRedonda', 4.4, 3.6, 0], ['sillaExt', 4.4, 3.0, 0]] },
+      { id: 'zen', name: 'Jardín zen y yoga', desc: 'Mucho verde, dos alfombras para yoga, tumbonas bajo una sombrilla y ducha. Pocos muebles, mucho aire.',
+        layout: [['alfombra', 2.2, 2.6, H2], ['puff', 3.3, 1.7, 0], ['sombrilla', 4.3, 1.3, 0], ['tumbonaSol', 3.9, 1.3, PI], ['tumbonaSol', 4.7, 1.3, PI],
+          ['arbol', 0.5, 0.5, 0], ['arbol', 0.5, 4.5, 0], ['arbol', 3.2, 4.5, 0], ['huerto', 1.8, 4.55, 0], ['macetero', 0.35, 1.6, H2], ['macetero', 0.35, 2.6, H2], ['macetero', 0.35, 3.6, H2],
+          ['ducha', 5.6, 4.7, 0], ['planta', 5.55, 0.4, 0]] },
+      { id: 'fiesta', name: 'Barra y fiestas', desc: 'Barra contra el muro con taburetes, dos sofás frente a frente, barbacoa junto a la caseta y sombrilla.',
+        layout: [['barra', 2.6, 0.45, 0], ['taburete', 1.8, 1.0, 0], ['taburete', 2.35, 1.0, 0], ['taburete', 2.9, 1.0, 0], ['taburete', 3.45, 1.0, 0],
+          ['sofaExt', 1.5, 2.5, 0], ['sofaExt', 1.5, 4.4, PI], ['mesaCentro', 1.5, 3.45, 0], ['alfombra', 1.5, 3.45, 0],
+          ['barbacoa', 5.6, 1.2, -H2], ['sombrilla', 4.0, 3.2, 0], ['sillaExt', 3.6, 3.3, H2], ['sillaExt', 4.4, 3.3, -H2], ['mesaRedonda', 4.0, 3.3, 0], ['arbol', 0.5, 0.5, 0]] },
     ],
   };
 
@@ -323,7 +361,8 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.95;
+
   mount.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -337,8 +376,12 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     new MutationObserver(applyBg).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   } catch (e) {}
 
-  scene.add(new THREE.HemisphereLight(0xfbf8f2, 0x7a766f, 0.8));
-  const sun = new THREE.DirectionalLight(0xfff0dc, 0.75);
+  scene.add(new THREE.HemisphereLight(0xfbf8f2, 0x7a766f, 0.45));
+  try {
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+  } catch (e) { scene.add(new THREE.HemisphereLight(0xfbf8f2, 0x7a766f, 0.4)); }
+  const sun = new THREE.DirectionalLight(0xfff0dc, 0.9);
   sun.position.set(CX - 6, 12, CZ - 4);
   sun.target.position.set(CX, 0, CZ);
   sun.castShadow = true;
@@ -407,7 +450,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     for (let i = 0; i <= 2; i++) { g.beginPath(); g.moveTo(i * s / 2, 0); g.lineTo(i * s / 2, s); g.stroke(); g.beginPath(); g.moveTo(0, i * s / 2); g.lineTo(s, i * s / 2); g.stroke(); }
   }, 128);
 
-  const mat = (color, extra) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.8, metalness: 0 }, extra || {}));
+  const mat = (color, extra) => new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.8, metalness: 0, envMapIntensity: 0.55 }, extra || {}));
   const wallMat = mat(0xf4f3ef, { roughness: 0.95 });
   const wallTopMat = mat(0x2f3433);
   const glassMat = new THREE.MeshStandardMaterial({ color: 0xa9cfe0, transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.1 });
@@ -415,6 +458,9 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   const doorWood = mat(0xc9864a, { roughness: 0.6 });
   const accentMat = mat(0xcbb9a3, { roughness: 0.95 });
   const skirtMat = mat(0x55585a, { roughness: 0.6 });
+  const doorLeaf = mat(0xd09155, { roughness: 0.55 });
+  const steelMat = mat(0xc9ccce, { metalness: 0.8, roughness: 0.3 });
+  const curtainMat = new THREE.MeshStandardMaterial({ color: 0xd9d4cb, roughness: 1, transparent: true, opacity: 0.88 });
 
   // ---------- Suelos y rótulos ----------
   const houseGroup = new THREE.Group(); scene.add(houseGroup);
@@ -442,7 +488,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     tex.needsUpdate = true;
     const scale = r.floor === 'wood' ? 1.2 : r.floor === 'grey' ? 1.2 : r.floor === 'tile' ? 1.2 : 1.0;
     tex.repeat.set(w / scale, d / scale);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: r.floor === 'grey' ? 0.45 : 0.75 }));
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: r.floor === 'grey' ? 0.45 : 0.75, envMapIntensity: 0.4 }));
     floor.rotation.x = -Math.PI / 2;
     floor.position.set(r.x1 + w / 2, 0.001, r.z1 + d / 2);
     floor.receiveShadow = true;
@@ -501,7 +547,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
         const cap = box(e - s, 0.005, w.t, H + 0.003, wallTopMat); cap.position.x = (s + e) / 2; cap.castShadow = false; g.add(cap);
         const sk = box(e - s, 0.08, w.t + 0.024, 0.04, skirtMat); sk.position.x = (s + e) / 2; sk.castShadow = false; g.add(sk);
       };
-      holes.forEach(([s, e, type]) => {
+      holes.forEach(hole => { const [s, e, type] = hole;
         solid(cur, s);
         const top = type === 'door' ? DOOR_H : WIN_H;
         if (type === 'door' || type === 'open') {
@@ -524,6 +570,14 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
         if (type === 'door') {
           const th = new THREE.Mesh(new THREE.BoxGeometry(e - s, 0.004, w.t), mat(0x8a6a48));
           th.position.set((s + e) / 2, 0.003, 0); g.add(th);
+          // hoja abierta 90° contra la pared
+          const side = hole[3] || 1, L = e - s - 0.08, lh = Math.min(H, DOOR_H) - 0.02;
+          const leaf = box(0.04, lh, L, lh / 2 + 0.01, doorLeaf); leaf.position.set(s + 0.08, lh / 2 + 0.01, side * (w.t / 2 + L / 2)); g.add(leaf);
+          const handle = box(0.02, 0.02, 0.12, 1.0, steelMat); handle.position.set(s + 0.12, Math.min(1.0, lh - 0.05), side * (w.t / 2 + L - 0.08)); g.add(handle);
+        }
+        if (type === 'glass') {
+          const ch2 = Math.min(H, 2.45);
+          [s - 0.18, e + 0.18].forEach(cx => { const c = box(0.36, ch2, 0.04, ch2 / 2, curtainMat); c.position.set(cx, ch2 / 2, -(w.t / 2 + 0.1)); c.castShadow = false; g.add(c); });
         }
         cur = e;
       });
@@ -568,7 +622,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     add(1.15, 2.2, 0.55, 6.3, 1.1, 8.12, mat(0xe9e4da));     // armario entrada
   })();
 
-  // ---------- Terraza de arriba: 8 × 5 m, caseta de 3,3 × 3 m ----------
+  // ---------- Terraza de arriba: 8 × 5 m; la caseta ocupa todo el ancho y 1/4 del largo (2 × 5 m) ----------
   const TW = 8.0, TD = 5.0;
   const terraceGroup = new THREE.Group(); scene.add(terraceGroup); terraceGroup.visible = false;
   (function terrace() {
@@ -587,30 +641,60 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     wall(TW + 0.5, 0.25, TW / 2, -0.125); wall(TW + 0.5, 0.25, TW / 2, TD + 0.125);
     wall(0.25, TD, -0.125, TD / 2); wall(0.25, TD, TW + 0.125, TD / 2);
     // caseta
-    const cx1 = 4.7, cz2 = 3.0, ch = 2.3, white = mat(0xf2f2f0, { roughness: 0.8 });
-    const shed = new THREE.Mesh(new THREE.BoxGeometry(TW - cx1, ch, cz2), white);
-    shed.position.set((cx1 + TW) / 2, ch / 2, cz2 / 2); shed.castShadow = shed.receiveShadow = true; terraceGroup.add(shed);
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(TW - cx1 + 0.15, 0.08, cz2 + 0.15), mat(0xd8d8d4)); roof.position.set((cx1 + TW) / 2, ch + 0.04, cz2 / 2); roof.castShadow = true; terraceGroup.add(roof);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.95, 2.05, 0.03), mat(0xe4e4e0)); door.position.set(7.15, 1.025, cz2 + 0.015); terraceGroup.add(door);
-    const grille = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.3, 0.035), mat(0x9aa0a3)); grille.position.set(7.15, 1.8, cz2 + 0.02); terraceGroup.add(grille);
-    for (let x = cx1 + 0.55; x < TW - 0.1; x += 0.55) { const seam = new THREE.Mesh(new THREE.BoxGeometry(0.01, ch - 0.1, 0.01), mat(0xd0d0cc)); seam.position.set(x, ch / 2, cz2 + 0.006); if (Math.abs(x - 7.15) > 0.5) terraceGroup.add(seam); }
+    const cx1 = TW * 0.75, ch = 2.3, white = mat(0xf2f2f0, { roughness: 0.8 });
+    const shed = new THREE.Mesh(new THREE.BoxGeometry(TW - cx1, ch, TD), white);
+    shed.position.set((cx1 + TW) / 2, ch / 2, TD / 2); shed.castShadow = shed.receiveShadow = true; terraceGroup.add(shed);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(TW - cx1 + 0.15, 0.08, TD + 0.15), mat(0xd8d8d4)); roof.position.set((cx1 + TW) / 2, ch + 0.04, TD / 2); roof.castShadow = true; terraceGroup.add(roof);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.03, 2.05, 0.95), mat(0xe4e4e0)); door.position.set(cx1 - 0.015, 1.025, 3.9); terraceGroup.add(door);
+    const grille = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.3, 0.75), mat(0x9aa0a3)); grille.position.set(cx1 - 0.02, 1.8, 3.9); terraceGroup.add(grille);
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.12), mat(0x777777)); lamp.position.set(cx1 - 0.04, 2.15, 2.6); terraceGroup.add(lamp);
+    for (let z = 0.55; z < TD - 0.1; z += 0.55) { if (Math.abs(z - 3.9) < 0.6) continue; const seam = new THREE.Mesh(new THREE.BoxGeometry(0.01, ch - 0.1, 0.01), mat(0xd0d0cc)); seam.position.set(cx1 - 0.006, ch / 2, z); terraceGroup.add(seam); }
     const mk = (t, sub, w, x, y, z, rot) => { const lbl = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 160 / 512),
       new THREE.MeshBasicMaterial({ map: labelTexture(t, sub, false), transparent: true, depthWrite: false }));
       lbl.rotation.x = -Math.PI / 2; if (rot) lbl.rotation.z = rot; lbl.position.set(x, y, z); lbl.renderOrder = 1; terraceGroup.add(lbl); };
-    mk('CASETA', '3,30 × 3,00 m · 10 m²', 2.6, (cx1 + TW) / 2, ch + 0.09, cz2 / 2);
-    mk('TERRAZA', '≈ 30 m² libres', 2.2, 2.35, 0.012, 2.5);
+    mk('CASETA', '2,00 × 5,00 m · 10 m²', 3.2, (cx1 + TW) / 2, ch + 0.09, TD / 2, Math.PI / 2);
+    mk('TERRAZA', '6,00 × 5,00 m · 30 m²', 2.4, 3.0, 0.012, 2.5);
   })();
 
   // ---------- Muebles ----------
   const furnitureGroup = new THREE.Group(); scene.add(furnitureGroup);
   let nextId = 1;
 
+  const grainTex = canvasTex((g, s) => {
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, s, s);
+    for (let i = 0; i < 90; i++) {
+      const y = Math.random() * s, a = 0.04 + Math.random() * 0.08;
+      g.strokeStyle = `rgba(120,85,45,${a})`; g.lineWidth = 0.6 + Math.random() * 1.6;
+      g.beginPath(); g.moveTo(0, y);
+      for (let x = 0; x <= s; x += 16) g.lineTo(x, y + Math.sin(x / 40 + i) * 3);
+      g.stroke();
+    }
+  }, 256);
+  const fabricTex = canvasTex((g, s) => {
+    const img = g.createImageData(s, s);
+    for (let i = 0; i < img.data.length; i += 4) { const v = 225 + Math.random() * 30; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+    g.putImageData(img, 0, 0);
+  }, 128, 3);
+  const matCache = new Map();
+  function partMat(color, opts) {
+    if (opts) return mat(color, opts);
+    const woods = [C.wood, C.woodDark, C.bedFrame, C.night, C.tvTop, 0x9a6b43, 0x8a6440, 0x6b4c33, 0xa57a52, 0xd2b88f];
+    const fabrics = [C.sofa, C.sofaCush, C.fabric, C.fabric2, C.bedThrow, C.rug, C.accent, C.bed, 0xecebe6, 0x8f9ea7];
+    const kind = woods.includes(color) ? 'w' : fabrics.includes(color) ? 'f' : 'p';
+    const key = kind + color;
+    if (!matCache.has(key)) matCache.set(key, kind === 'w' ? mat(color, { map: grainTex, roughness: 0.6 })
+      : kind === 'f' ? mat(color, { map: fabricTex, roughness: 1 }) : mat(color, { roughness: 0.55 }));
+    return matCache.get(key);
+  }
+  const ROUNDED = typeof THREE.RoundedBoxGeometry === 'function';
   function part(g, w, h, d, x, y, z, color, opts) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, opts));
+    const r = Math.min(0.025, Math.min(w, h, d) / 2.5);
+    const geo = ROUNDED && r > 0.004 ? new THREE.RoundedBoxGeometry(w, h, d, 2, r) : new THREE.BoxGeometry(w, h, d);
+    const m = new THREE.Mesh(geo, partMat(color, opts));
     m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; g.add(m); return m;
   }
   function cyl(g, r, h, x, y, z, color) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), mat(color));
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 24), partMat(color));
     m.position.set(x, y, z); m.castShadow = true; g.add(m); return m;
   }
   const BUILD = {
@@ -719,7 +803,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   // ---------- Guardado local ----------
   const LEVELS = {
     piso: { group: houseGroup, cx: CX, cz: CZ, b: [-1.5, 8.3, 0.3, 9.5], k: 1 },
-    terraza: { group: terraceGroup, cx: TW / 2, cz: TD / 2, b: [0.2, TW - 0.2, 0.2, TD - 0.2], k: 0.95 },
+    terraza: { group: terraceGroup, cx: TW / 2, cz: TD / 2, b: [0.2, TW * 0.75 - 0.2, 0.2, TD - 0.2], k: 1.05 },
   };
   let level = 'piso';
   const KEY = 'piso3b-v3';

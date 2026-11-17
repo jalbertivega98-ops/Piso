@@ -165,10 +165,10 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   const TE = 0.2;  // muro exterior
 
   const ROOMS = [
-    { name: 'SALÓN / COMEDOR', dims: '5,61 × 3,88 m', x1: 0, z1: 0, x2: 5.61, z2: 3.88, floor: 'grey' },
+    { name: 'SALÓN / COMEDOR', dims: '5,61 × 3,88 m', measured: true, x1: 0, z1: 0, x2: 5.61, z2: 3.88, floor: 'grey' },
     { name: 'COCINA', dims: '1,75 × 3,56 m', x1: 5.71, z1: 0, x2: 7.46, z2: 3.56, floor: 'grey', rot: true },
-    { name: 'DORMITORIO', dims: '4,21 × 2,67 m', x1: 0, z1: 3.98, x2: 4.21, z2: 6.65, floor: 'wood' },
-    { name: 'OFICINA', dims: '3,95 × 2,68 m', x1: 0.26, z1: 6.75, x2: 4.21, z2: 9.43, floor: 'grey' },
+    { name: 'DORMITORIO', dims: '4,21 × 2,67 m', measured: true, x1: 0, z1: 3.98, x2: 4.21, z2: 6.65, floor: 'wood' },
+    { name: 'OFICINA', dims: '3,95 × 2,68 m', measured: true, x1: 0.26, z1: 6.75, x2: 4.21, z2: 9.43, floor: 'grey' },
     { name: 'PASILLO', dims: '1,81 × 5,00 m', x1: 4.31, z1: 3.98, x2: 5.61, z2: 9.43, floor: 'grey', rot: true },
     { name: 'ENTRADA', dims: '', x1: 5.61, z1: 7.83, x2: 6.9, z2: 9.43, floor: 'grey' },
     { name: 'BAÑO', dims: '2,55 × 1,65 m', x1: 5.71, z1: 3.66, x2: 8.26, z2: 5.31, floor: 'grey' },
@@ -196,7 +196,34 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     { a: [5.66, -0.1], b: [5.66, 7.78], t: T, holes: [[0.6, 2.5, 'open'], [4.4, 5.2, 'door', -1], [6.8, 7.6, 'door', -1]] },
   ];
 
-  const CX = 3.4, CZ = 4.7;
+  // ---------- Medidas reales de Joel (17-11-2026) ----------
+  // Salón 5,44 × 3,50 · dormitorio 4,10 × 2,50 · oficina 3,90 × 2,60. El resto del plano se ajusta en proporción.
+  function pw(knots, v) {
+    if (v <= knots[0][0]) return v + knots[0][1] - knots[0][0];
+    for (let i = 1; i < knots.length; i++) {
+      const [a0, b0] = knots[i - 1], [a1, b1] = knots[i];
+      if (v <= a1) return b0 + (v - a0) * (b1 - b0) / (a1 - a0);
+    }
+    const [aL, bL] = knots[knots.length - 1]; return v + bL - aL;
+  }
+  const KX = [[0, 0], [0.26, 0.2], [4.21, 4.1], [4.31, 4.2], [5.61, 5.44]];
+  const KZ = [[0, 0], [3.88, 3.5], [3.98, 3.6], [6.65, 6.1], [6.75, 6.2], [9.43, 8.8]];
+  function mapX(v) { return +pw(KX, v).toFixed(4); }
+  function mapZ(v) { return +pw(KZ, v).toFixed(4); }
+  // caja (centro + tamaño) del plano antiguo al nuevo
+  function mapBox(x, z, w, d) { const x1 = mapX(x - w / 2), x2 = mapX(x + w / 2), z1 = mapZ(z - d / 2), z2 = mapZ(z + d / 2);
+    return { x: (x1 + x2) / 2, z: (z1 + z2) / 2, w: x2 - x1, d: z2 - z1 }; }
+  const fmtM = v => v.toFixed(2).replace('.', ',');
+  ROOMS.forEach(r => { r.x1 = mapX(r.x1); r.x2 = mapX(r.x2); r.z1 = mapZ(r.z1); r.z2 = mapZ(r.z2);
+    const w = r.x2 - r.x1, d = r.z2 - r.z1;
+    if (r.dims) r.dims = (r.measured ? '' : '≈ ') + fmtM(w) + ' × ' + fmtM(d) + ' m'; });
+  WALLS.forEach(w => {
+    const [ax, az] = w.a, [bx, bz] = w.b, horiz = Math.abs(bz - az) < 1e-6;
+    w.a = [mapX(ax), mapZ(az)]; w.b = [mapX(bx), mapZ(bz)];
+    if (w.holes) w.holes = w.holes.map(h => { const m = horiz ? (v => mapX(ax + v) - w.a[0]) : (v => mapZ(az + v) - w.a[1]);
+      return [m(h[0]), m(h[1])].concat(h.slice(2)); });
+  });
+  const CX = mapX(3.4), CZ = mapZ(4.7);
 
   // ---------- Catálogo de muebles ----------
   // Paletas: 'fotos' reproduce tus muebles; 'minimal' es madera clara, blancos cálidos y tonos piedra
@@ -469,8 +496,9 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   ground.rotation.x = -Math.PI / 2; ground.position.set(CX, -0.03, CZ); ground.receiveShadow = true;
   scene.add(ground);
   // Losa del piso por debajo de las estancias
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(10.2, 0.25, 10.0), mat(0x8e9592));
-  slab.position.set(3.4, -0.15, 4.72); houseGroup.add(slab);
+  const sb = mapBox(3.4, 4.72, 10.2, 10.0);
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(sb.w, 0.25, sb.d), mat(0x8e9592));
+  slab.position.set(sb.x, -0.15, sb.z); houseGroup.add(slab);
 
   function labelTexture(title, sub, light) {
     const c = document.createElement('canvas'); c.width = 512; c.height = 160;
@@ -508,7 +536,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   // Barandilla del balcón
   (function balcony() {
     const rail = mat(0x6d7471, { metalness: 0.4, roughness: 0.5 });
-    const x = -1.55, z1 = 0.35, z2 = 9.45, h = 1.0;
+    const x = -1.55, z1 = mapZ(0.35), z2 = mapZ(9.45), h = 1.0;
     const side = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, z2 - z1), rail);
     side.position.set(x, h, (z1 + z2) / 2); houseGroup.add(side);
     const reed = mat(0xc4ad84, { roughness: 1 });
@@ -589,15 +617,15 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
       pl.position.set((x1 + x2) / 2, H / 2, z); pl.rotation.y = faceSouth ? 0 : Math.PI; pl.receiveShadow = true;
       wallGroup.add(pl);
     };
-    const bt = brickTex.clone(); bt.needsUpdate = true; bt.repeat.set(4.21 / 0.9, H / 0.6);
-    skin(0, 4.21, 6.645, false, new THREE.MeshStandardMaterial({ map: bt, roughness: 0.95 }));
-    skin(0, 4.21, 3.875, false, accentMat);
+    const bt = brickTex.clone(); bt.needsUpdate = true; bt.repeat.set(mapX(4.21) / 0.9, H / 0.6);
+    skin(0, mapX(4.21), mapZ(6.645), false, new THREE.MeshStandardMaterial({ map: bt, roughness: 0.95 }));
+    skin(0, mapX(4.21), mapZ(3.875), false, accentMat);
   }
 
   // Elementos fijos: cocina, baño, aseo y armario de la entrada
   const upperFix = [];
   (function fixtures() {
-    const add = (w, h, d, x, y, z, m) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.castShadow = b.receiveShadow = true; houseGroup.add(b); return b; };
+    const add = (w, h, d, x, y, z, m) => { const q = mapBox(x, z, w, d); const b = new THREE.Mesh(new THREE.BoxGeometry(q.w, h, q.d), m); b.position.set(q.x, y, q.z); b.castShadow = b.receiveShadow = true; houseGroup.add(b); return b; };
     const counter = mat(0xf0eee9), top = mat(0xdcd8d0, { roughness: 0.5 }), steel = mat(0xb9bec1, { metalness: 0.6, roughness: 0.3 });
     const oak = mat(0xd9b98f, { roughness: 0.7 }), grey = mat(0xb4b4b0, { roughness: 0.5 });
     // U: fondo contra la pared este y dos brazos contra las paredes norte y sur
@@ -655,6 +683,8 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     mk('CASETA', '2,00 × 5,00 m · 10 m²', 3.2, (cx1 + TW) / 2, ch + 0.09, TD / 2, Math.PI / 2);
     mk('TERRAZA', '6,00 × 5,00 m · 30 m²', 2.4, 3.0, 0.012, 2.5);
   })();
+
+  PRESETS.piso.forEach(p => { p.layout = p.layout.map(([t, x, z, r]) => [t, mapX(x), mapZ(z), r]); });
 
   // ---------- Muebles ----------
   const furnitureGroup = new THREE.Group(); scene.add(furnitureGroup);
@@ -802,13 +832,16 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
 
   // ---------- Guardado local ----------
   const LEVELS = {
-    piso: { group: houseGroup, cx: CX, cz: CZ, b: [-1.5, 8.3, 0.3, 9.5], k: 1 },
+    piso: { group: houseGroup, cx: CX, cz: CZ, b: [-1.5, mapX(8.3), 0.3, mapZ(9.5)], k: 1 },
     terraza: { group: terraceGroup, cx: TW / 2, cz: TD / 2, b: [0.2, TW * 0.75 - 0.2, 0.2, TD - 0.2], k: 1.05 },
   };
   let level = 'piso';
-  const KEY = 'piso3b-v3';
+  const KEY = 'piso3b-v5';
   let store = { piso: null, terraza: null, preset: { piso: 'actual', terraza: 'actual' } };
-  try { const raw = JSON.parse(localStorage.getItem(KEY) || 'null'); if (raw && raw.preset) store = raw; } catch (e) {}
+  try { let raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (!raw) { raw = JSON.parse(localStorage.getItem('piso3b-v3') || 'null');
+      if (raw && raw.piso) raw.piso = raw.piso.map(([t, x, z, r]) => [t, mapX(x), mapZ(z), r]); }
+    if (raw && raw.preset) store = raw; } catch (e) {}
   function currentList() {
     return furnitureGroup.children.map(g => [g.userData.type, +g.position.x.toFixed(3), +g.position.z.toFixed(3), +g.rotation.y.toFixed(4)]);
   }

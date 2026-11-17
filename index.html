@@ -187,9 +187,8 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     { a: [5.66, 7.78], b: [7.23, 7.78], t: T },
     { a: [6.95, 7.78], b: [6.95, 9.53], t: TE },
     { a: [0.16, 9.53], b: [7.05, 9.53], t: TE, holes: [[4.45, 5.35, 'door', -1]] },
-    { a: [0.16, 6.70], b: [0.16, 9.53], t: TE, holes: [[0.4, 2.5, 'glass']] },
     { a: [-0.1, 6.70], b: [4.26, 6.70], t: T },
-    { a: [-0.1, -0.1], b: [-0.1, 6.75], t: TE, holes: [[0.6, 1.9, 'glass'], [2.1, 3.4, 'glass'], [4.25, 5.15, 'glass']] },
+    { a: [-0.1, -0.1], b: [-0.1, 4.03], t: TE, holes: [[0.6, 1.9, 'glass'], [2.1, 3.4, 'glass']] },
     { a: [4.26, 3.93], b: [5.66, 3.93], t: T, holes: [[0.3, 1.1, 'door', -1]] },
     { a: [-0.1, 3.93], b: [4.26, 3.93], t: T },
     { a: [4.26, 3.93], b: [4.26, 9.53], t: T, holes: [[1.75, 2.55, 'door'], [4.45, 5.25, 'door']] },
@@ -216,7 +215,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   const fmtM = v => v.toFixed(2).replace('.', ',');
   // la habitación 2 llega hasta la fachada igual que el dormitorio (sin el retranqueo que estimé del plano)
   ROOMS.find(r => r.name === 'OFICINA').x1 = 0;
-  WALLS.forEach(w => { if (w.a[0] === 0.16) w.a = [-0.1, w.a[1]]; if (w.b[0] === 0.16) w.b = [-0.1, w.b[1]]; });
+  WALLS.forEach(w => { if (w.a[0] === 0.16) w.a = [-0.1, w.a[1]]; });
   ROOMS.forEach(r => { r.x1 = mapX(r.x1); r.x2 = mapX(r.x2); r.z1 = mapZ(r.z1); r.z2 = mapZ(r.z2);
     const w = r.x2 - r.x1, d = r.z2 - r.z1;
     if (r.dims) r.dims = (r.measured ? '' : '≈ ') + fmtM(w) + ' × ' + fmtM(d) + ' m'; });
@@ -226,6 +225,27 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     if (w.holes) w.holes = w.holes.map(h => { const m = horiz ? (v => mapX(ax + v) - w.a[0]) : (v => mapZ(az + v) - w.a[1]);
       return [m(h[0]), m(h[1])].concat(h.slice(2)); });
   });
+  // Paredes torcidas: la fachada del dormitorio y de la habitación 2 va en diagonal.
+  // Dormitorio 3,52 (lado salón) → 3,90 (lado hab. 2) × 2,60; habitación 2 3,90 → 4,10 × 2,50.
+  (function slanted() {
+    const dorm = ROOMS.find(r => r.name === 'DORMITORIO'), hab = ROOMS.find(r => r.name === 'OFICINA');
+    const xe = dorm.x2;
+    dorm.poly = [[xe - 3.52, dorm.z1], [xe, dorm.z1], [xe, dorm.z2], [xe - 3.90, dorm.z2]];
+    hab.poly = [[xe - 3.90, hab.z1], [xe, hab.z1], [xe, hab.z2], [xe - 4.10, hab.z2]];
+    dorm.x1 = xe - 3.90; hab.x1 = xe - 4.10;
+    dorm.dims = '3,52–3,90 × 2,60 m'; hab.dims = '3,90–4,10 × 2,50 m';
+    // pared exterior por fuera de la cara interior, con su puerta de balcón
+    const wall = (p, q, holeFrac) => { const L = Math.hypot(q[0] - p[0], q[1] - p[1]);
+      const n = [-(q[1] - p[1]) / L, (q[0] - p[0]) / L];  // normal hacia el interior (+x)
+      const a = [p[0] - n[0] * TE / 2, p[1] - n[1] * TE / 2], b = [q[0] - n[0] * TE / 2, q[1] - n[1] * TE / 2];
+      const dz = T / 2 + 0.0, ext = (v, k) => [v[0] + (q[0] - p[0]) / L * k, v[1] + (q[1] - p[1]) / L * k];
+      const A = ext(a, -dz - 0.05), B = ext(b, dz + 0.05), LL = Math.hypot(B[0] - A[0], B[1] - A[1]), off = dz + 0.05;
+      WALLS.push({ a: A, b: B, t: TE, holes: [[off + holeFrac[0] * L, off + holeFrac[1] * L, 'glass']] }); };
+    wall([dorm.poly[0][0], dorm.z1], [dorm.poly[3][0], dorm.z2], [0.07, 0.4]);
+    wall([hab.poly[0][0], hab.z1], [hab.poly[3][0], hab.z2], [0.14, 0.92]);
+    // cierre entre la fachada del salón y la del dormitorio, y esquina inferior
+    WALLS.forEach(w => { if (Math.abs(w.a[1] - w.b[1]) < 1e-6 && w.a[0] === -0.1 && w.a[1] > hab.z2) w.a = [hab.poly[3][0] - TE, w.a[1]]; });
+  })();
   const CX = mapX(3.4), CZ = mapZ(4.7);
 
   // ---------- Catálogo de muebles ----------
@@ -519,9 +539,12 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     tex.needsUpdate = true;
     const scale = r.floor === 'wood' ? 1.2 : r.floor === 'grey' ? 1.2 : r.floor === 'tile' ? 1.2 : 1.0;
     tex.repeat.set(w / scale, d / scale);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: r.floor === 'grey' ? 0.45 : 0.75, envMapIntensity: 0.4 }));
+    let geo;
+    if (r.poly) { const sh = new THREE.Shape(r.poly.map(([x, z]) => new THREE.Vector2(x, -z))); geo = new THREE.ShapeGeometry(sh); tex.repeat.set(1 / scale, 1 / scale); }
+    else geo = new THREE.PlaneGeometry(w, d);
+    const floor = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex, roughness: r.floor === 'grey' ? 0.45 : 0.75, envMapIntensity: 0.4 }));
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(r.x1 + w / 2, 0.001, r.z1 + d / 2);
+    if (r.poly) floor.position.set(0, 0.001, 0); else floor.position.set(r.x1 + w / 2, 0.001, r.z1 + d / 2);
     floor.receiveShadow = true;
     houseGroup.add(floor);
 

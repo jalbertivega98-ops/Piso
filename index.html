@@ -168,7 +168,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     { name: 'SALÓN / COMEDOR', dims: '5,61 × 3,88 m', measured: true, x1: 0, z1: 0, x2: 5.61, z2: 3.88, floor: 'grey' },
     { name: 'COCINA', dims: '1,75 × 3,56 m', x1: 5.71, z1: 0, x2: 7.46, z2: 3.56, floor: 'grey', rot: true },
     { name: 'DORMITORIO', dims: '4,21 × 2,67 m', measured: true, x1: 0, z1: 3.98, x2: 4.21, z2: 6.65, floor: 'wood' },
-    { name: 'OFICINA', dims: '3,95 × 2,68 m', measured: true, x1: 0.26, z1: 6.75, x2: 4.21, z2: 9.43, floor: 'grey' },
+    { name: 'OFICINA', label: 'HABITACIÓN 2', dims: '3,95 × 2,68 m', measured: true, x1: 0.26, z1: 6.75, x2: 4.21, z2: 9.43, floor: 'grey' },
     { name: 'PASILLO', dims: '1,81 × 5,00 m', x1: 4.31, z1: 3.98, x2: 5.61, z2: 9.43, floor: 'grey', rot: true },
     { name: 'ENTRADA', dims: '', x1: 5.61, z1: 7.83, x2: 6.9, z2: 9.43, floor: 'grey' },
     { name: 'BAÑO', dims: '2,55 × 1,65 m', x1: 5.71, z1: 3.66, x2: 8.26, z2: 5.31, floor: 'grey' },
@@ -197,7 +197,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
   ];
 
   // ---------- Medidas reales de Joel (17-11-2026) ----------
-  // Salón 5,44 × 3,50 · dormitorio 4,10 × 2,50 · oficina 3,90 × 2,60. El resto del plano se ajusta en proporción.
+  // Salón 5,44 × 3,50 · dormitorio de matrimonio 3,90 × 2,60 · habitación 2 3,90 × 2,50. El resto del plano se ajusta en proporción.
   function pw(knots, v) {
     if (v <= knots[0][0]) return v + knots[0][1] - knots[0][0];
     for (let i = 1; i < knots.length; i++) {
@@ -206,14 +206,17 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
     }
     const [aL, bL] = knots[knots.length - 1]; return v + bL - aL;
   }
-  const KX = [[0, 0], [0.26, 0.2], [4.21, 4.1], [4.31, 4.2], [5.61, 5.44]];
-  const KZ = [[0, 0], [3.88, 3.5], [3.98, 3.6], [6.65, 6.1], [6.75, 6.2], [9.43, 8.8]];
+  const KX = [[0, 0], [4.21, 3.9], [4.31, 4.0], [5.61, 5.44]];
+  const KZ = [[0, 0], [3.88, 3.5], [3.98, 3.6], [6.65, 6.2], [6.75, 6.3], [9.43, 8.8]];
   function mapX(v) { return +pw(KX, v).toFixed(4); }
   function mapZ(v) { return +pw(KZ, v).toFixed(4); }
   // caja (centro + tamaño) del plano antiguo al nuevo
   function mapBox(x, z, w, d) { const x1 = mapX(x - w / 2), x2 = mapX(x + w / 2), z1 = mapZ(z - d / 2), z2 = mapZ(z + d / 2);
     return { x: (x1 + x2) / 2, z: (z1 + z2) / 2, w: x2 - x1, d: z2 - z1 }; }
   const fmtM = v => v.toFixed(2).replace('.', ',');
+  // la habitación 2 llega hasta la fachada igual que el dormitorio (sin el retranqueo que estimé del plano)
+  ROOMS.find(r => r.name === 'OFICINA').x1 = 0;
+  WALLS.forEach(w => { if (w.a[0] === 0.16) w.a = [-0.1, w.a[1]]; if (w.b[0] === 0.16) w.b = [-0.1, w.b[1]]; });
   ROOMS.forEach(r => { r.x1 = mapX(r.x1); r.x2 = mapX(r.x2); r.z1 = mapZ(r.z1); r.z2 = mapZ(r.z2);
     const w = r.x2 - r.x1, d = r.z2 - r.z1;
     if (r.dims) r.dims = (r.measured ? '' : '≈ ') + fmtM(w) + ' × ' + fmtM(d) + ' m'; });
@@ -524,7 +527,7 @@ button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink
 
     const lw = Math.min(r.rot ? d : w, 2.6), lh = lw * 160 / 512;
     const lbl = new THREE.Mesh(new THREE.PlaneGeometry(lw, lh),
-      new THREE.MeshBasicMaterial({ map: labelTexture(r.name, r.dims, r.floor === 'grey'), transparent: true, depthWrite: false }));
+      new THREE.MeshBasicMaterial({ map: labelTexture(r.label || r.name, r.dims, r.floor === 'grey'), transparent: true, depthWrite: false }));
     lbl.rotation.x = -Math.PI / 2;
     if (r.rot) lbl.rotation.z = Math.PI / 2;
     lbl.position.set(r.x1 + w / 2, 0.012, r.z1 + d / 2);
